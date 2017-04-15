@@ -15,9 +15,9 @@ struct Page {
 		m_value = value;
 	}
 	void updateAge() {
-		m_agingCounter >> 1;
+		m_agingCounter = m_agingCounter >> 1;
 		if (m_wasUsed) {
-			m_agingCounter | 0b10000000;
+			m_agingCounter = m_agingCounter | 0b10000000;
 		}	
 		m_wasUsed = false;
 	}
