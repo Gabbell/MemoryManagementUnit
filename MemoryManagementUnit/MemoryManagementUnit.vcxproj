@@ -113,10 +113,13 @@
     <ClCompile Include="FIFOScheduler.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MyProcess.cpp" />
+    <ClCompile Include="VMManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FIFOScheduler.h" />
     <ClInclude Include="MyProcess.h" />
+    <ClInclude Include="Page.h" />
+    <ClInclude Include="VMManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="processes.txt" />
