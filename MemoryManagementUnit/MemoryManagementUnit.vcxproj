@@ -113,15 +113,13 @@
     <ClCompile Include="FIFOScheduler.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MyProcess.cpp" />
-    <ClCompile Include="Scheduler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FIFOScheduler.h" />
     <ClInclude Include="MyProcess.h" />
-    <ClInclude Include="Scheduler.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="input.txt" />
+    <Text Include="processes.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

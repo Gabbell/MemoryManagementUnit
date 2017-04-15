@@ -1,12 +1,16 @@
 #include <iostream>
-#include <fstream>
+#include <chrono>
 #include <string>
 #include <Windows.h>
-#include "Scheduler.h"
+
+#include "FIFOScheduler.h"
+#include "MyProcess.h"
+
+#include <iostream>
 
 using namespace std;
 
-double getCurrentTime(HRClock::time_point startTime, HRClock::time_point endTime) {
+double getCurrentTime(std::chrono::high_resolution_clock::time_point startTime, std::chrono::high_resolution_clock::time_point endTime) {
 
 	using namespace std::chrono;
 
@@ -18,11 +22,11 @@ double getCurrentTime(HRClock::time_point startTime, HRClock::time_point endTime
 }
 
 DWORD WINAPI dummyRoutine(LPVOID p) {
-	HRClock::time_point t_start = HRClock::now();
+	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	MyProcess* process = (MyProcess*)(p);
 
 	//Busy waiting
-	while (getCurrentTime(t_start, HRClock::now()) - process->getTotalWaitTime() < process->getBurstTime());
+	while (getCurrentTime(t_start, std::chrono::high_resolution_clock::now()) < process->getBurstTime());
 
 	// Terminate process
 	process->terminate();
@@ -31,10 +35,16 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 }
 
 DWORD WINAPI overwatchRoutine(LPVOID p) {
-	Scheduler scheduler;
+	//Scheduler scheduler;
 	
-	scheduler.run(&dummyRoutine);
-	
+	//scheduler.run(&dummyRoutine);
+	try {
+		FIFOScheduler scheduler("processes.txt");
+		scheduler.run();
+	}
+	catch (runtime_error& e) {
+		cout << e.what() << endl;
+	}
 
 	return 0;
 }
@@ -54,7 +64,7 @@ int main() {
 
 	WaitForSingleObject(t_overwatch, INFINITE);
 
-	// system("pause"); // Used for testing
+	system("pause"); // Used for testing
 
 	return 0;
 }
