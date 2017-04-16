@@ -8,7 +8,12 @@ VMManager::VMManager(int capacity) : m_capacity(capacity)
 
 	diskInStream.open("vm.txt");
 	diskOutStream.open("vm.txt");
+	scheduler = new FIFOScheduler("processes.txt");
 
+}
+
+void VMManager::run() {
+	scheduler->run();
 }
 
 int VMManager::store(std::string variableId, unsigned int value) {
@@ -25,6 +30,7 @@ int VMManager::store(std::string variableId, unsigned int value) {
 
 		//Finding the variable with the smallest age
 		std::map<std::string, Page*>::iterator it;
+		it = m_mainMemory.begin();
 		while (it != m_mainMemory.end()) {
 			if (it->second->m_agingCounter < smallestAge) {
 				smallestAgeId = it->second->m_variableId;
@@ -34,12 +40,17 @@ int VMManager::store(std::string variableId, unsigned int value) {
 		}
 		it = m_mainMemory.find(smallestAgeId);
 
+		std::cout << "SWAP: Variable " << it->second->m_variableId << " with Variable " << variableId << std::endl;
+
 		//Storing the page in disk that is currently in main memory and that will be switched out
 		diskStore(it->second->m_variableId, it->second->m_value);
 		//Releasing the page from main memory
 		release(it->second->m_variableId);
 		//Storing the new page into main memory
 		store(variableId, value);
+
+		m_mainMemory[variableId]->isUsed();
+		return 1;
 	}
 	std::cout << "VMManager: store: An error occured" << std::endl;
 	return -1; //For now if a frame is not found, do nothing and ignore the command
@@ -77,6 +88,7 @@ int VMManager::lookup(std::string variableId) {
 
 	if (it != m_mainMemory.end()) {
 		//Found the variable in main memory
+		it->second->isUsed();
 		return it->second->m_value;
 	}
 
@@ -104,4 +116,6 @@ VMManager::~VMManager()
 		delete it->second;
 		it++;
 	}
+
+	delete scheduler;
 }

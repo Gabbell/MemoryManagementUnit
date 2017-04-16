@@ -1,10 +1,3 @@
-#include <iostream>
-#include <chrono>
-#include <string>
-#include <fstream>
-#include <Windows.h>
-#include <vector>
-
 #include "FIFOScheduler.h"
 #include "MyProcess.h"
 #include "VMManager.h"
@@ -27,6 +20,8 @@ struct Command {
 };
 
 vector<Command> commands;
+int commandIndex = 0;
+int commandWait = rand() % 201;
 
 void synchronizedStore(std::string variableId, unsigned int value) {
 	WaitForSingleObject(lock, INFINITE);
@@ -72,23 +67,28 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 
 	//Busy waiting
 	while (getCurrentTime(t_start, std::chrono::high_resolution_clock::now()) < process->getBurstTime()) {
-		if (getCurrentTime(commandTimer, std::chrono::high_resolution_clock::now()) >= 200) {
-			Command cmd = commands[rand() % commands.size()];
+		if (getCurrentTime(commandTimer, std::chrono::high_resolution_clock::now()) >= commandWait) {
+			Command cmd = commands[commandIndex];
 
 			switch (cmd.type) {
 			case Command::STORE:
-				cout << "STORING" << endl;
+				cout << "STORING " << cmd.variableId << " " << cmd.value << endl;
+				mmu->store(cmd.variableId, cmd.value);
 				break;
 			case Command::RELEASE:
-				cout << "RELEASING" << endl;
+				cout << "RELEASING " << cmd.variableId << endl;
+				mmu->release(cmd.variableId);
 				break;
 			case Command::LOOKUP:
-				cout << "LOOKUP" << endl;
+				cout << "LOOKUP " << cmd.variableId << endl;
+				mmu->lookup(cmd.variableId);
 				break;
 			default:
 				break;
 			}
 			commandTimer = std::chrono::high_resolution_clock::now();
+			commandIndex++;
+			commandWait += rand() % 201;
 		}
 	}
 
@@ -102,9 +102,23 @@ DWORD WINAPI overwatchRoutine(LPVOID p) {
 	//Scheduler scheduler;
 	
 	//scheduler.run(&dummyRoutine);
+
+	// Create MMU
+	ifstream configFile("memconfig.txt");
+
+	if (!configFile) {
+		cout << "Error: invalid or missing memconfig.txt file." << endl;
+		return 1;
+	}
+
+	int capacity = 0;
+	configFile >> capacity;
+
+	configFile.close();
+
 	try {
-		FIFOScheduler scheduler("processes.txt");
-		scheduler.run();
+		mmu = new VMManager(capacity);
+		mmu->run();
 	}
 	catch (runtime_error& e) {
 		cout << e.what() << endl;
@@ -143,21 +157,6 @@ int main() {
 	}
 
 	commandFile.close();
-
-	// Create MMU
-	ifstream configFile("memconfig.txt");
-
-	if (!configFile) {
-		cout << "Error: invalid or missing memconfig.txt file." << endl;
-		return 1;
-	}
-
-	int capacity = 0;
-	configFile >> capacity;
-
-	configFile.close();
-
-	mmu = new VMManager(capacity);
 
 	// Create mutex
 	lock = CreateMutex(NULL, false, NULL);
