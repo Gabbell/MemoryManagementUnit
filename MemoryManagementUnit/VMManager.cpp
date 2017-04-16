@@ -97,6 +97,10 @@ int VMManager::diskRelease(std::string variableId) {
 		input >> currentId;
 		input >> currentValue;
 
+		if (input.eof()) {
+			break;
+		}
+
 		if (currentId != variableId) {
 			strim << currentId << " " << currentValue << std::endl;
 		}

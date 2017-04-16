@@ -108,7 +108,10 @@ DWORD WINAPI overwatchRoutine(LPVOID p) {
 		double now = getCurrentTime(t_start, std::chrono::high_resolution_clock::now());
 		if (now >= agingWait) {
 			//Aging tick
+			WaitForSingleObject(lock, INFINITE);
 			mmu->sweepAges();
+			ReleaseMutex(lock);
+
 			agingWait += 100;
 		}
 	}
