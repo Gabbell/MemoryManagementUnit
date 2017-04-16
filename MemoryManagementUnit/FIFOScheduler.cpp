@@ -31,7 +31,7 @@ void sortProcessArray(MyProcess** array, int arraySize) {
 }
 
 
-FIFOScheduler::FIFOScheduler(std::string processFile) : m_currentlyRunningProcessCore1(nullptr), m_currentlyRunningProcessCore2(nullptr) {
+FIFOScheduler::FIFOScheduler(std::string processFile) : m_currentlyRunningProcessCore1(nullptr), m_currentlyRunningProcessCore2(nullptr), m_runningTime(0) {
 	
 	std::ifstream input(processFile);
 
@@ -104,26 +104,25 @@ void FIFOScheduler::run() {
 	std::ofstream output = std::ofstream("output.txt");
 
 	auto startTimePoint = std::chrono::high_resolution_clock::now();
-	double currentTime = 0;
 
 	std::cout << "----------STARTING SCHEDULER----------" << std::endl;
 
 	while (!m_arrivalQueue.empty() || !m_readyQueue.empty() || m_currentlyRunningProcessCore1 || m_currentlyRunningProcessCore2) {
 		
-		currentTime = getCurrentTime(startTimePoint, std::chrono::high_resolution_clock::now());
+		m_runningTime = getCurrentTime(startTimePoint, std::chrono::high_resolution_clock::now());
 
 		// Add process if it has arrived
-		while (!m_arrivalQueue.empty() && currentTime >= m_arrivalQueue.front()->getArrivalTime()) {
-			notifyProcessArrive(m_arrivalQueue.front(), currentTime, output);
+		while (!m_arrivalQueue.empty() && m_runningTime >= m_arrivalQueue.front()->getArrivalTime()) {
+			notifyProcessArrive(m_arrivalQueue.front(), output);
 			// Check to see if there is a core availible
 			if (!m_currentlyRunningProcessCore1) {
-				notifyProcessStart(m_arrivalQueue.front(), currentTime, 1, output);
+				notifyProcessStart(m_arrivalQueue.front(), 1, output);
 				m_currentlyRunningProcessCore1 = m_arrivalQueue.front();
 				startProcess(m_currentlyRunningProcessCore1);
 				m_arrivalQueue.pop();
 			}
 			else if (!m_currentlyRunningProcessCore2) {
-				notifyProcessStart(m_arrivalQueue.front(), currentTime, 2, output);
+				notifyProcessStart(m_arrivalQueue.front(), 2, output);
 				m_currentlyRunningProcessCore2 = m_arrivalQueue.front();
 				startProcess(m_currentlyRunningProcessCore2);
 				m_arrivalQueue.pop();
@@ -139,13 +138,13 @@ void FIFOScheduler::run() {
 		while (!m_readyQueue.empty()) {
 			// Check to see if there is a core availible
 			if (!m_currentlyRunningProcessCore1) {
-				notifyProcessStart(m_readyQueue.front(), currentTime, 1, output);
+				notifyProcessStart(m_readyQueue.front(), 1, output);
 				m_currentlyRunningProcessCore1 = m_readyQueue.front();
 				startProcess(m_currentlyRunningProcessCore1);
 				m_readyQueue.pop();
 			}
 			else if (!m_currentlyRunningProcessCore2) {
-				notifyProcessStart(m_readyQueue.front(), currentTime, 2, output);
+				notifyProcessStart(m_readyQueue.front(), 2, output);
 				m_currentlyRunningProcessCore2 = m_readyQueue.front();
 				startProcess(m_currentlyRunningProcessCore2);
 				m_readyQueue.pop();
@@ -159,12 +158,12 @@ void FIFOScheduler::run() {
 		// Check if current running processes are terminated
 		if (m_currentlyRunningProcessCore1 && m_currentlyRunningProcessCore1->isTerminated()) {
 			WaitForSingleObject(m_currentlyRunningProcessCore1->getHandle(), INFINITE);
-			notifyProcessTerminate(m_currentlyRunningProcessCore1, currentTime, 1, output);
+			notifyProcessTerminate(m_currentlyRunningProcessCore1, 1, output);
 			delete m_currentlyRunningProcessCore1;
 
 			// Can I replace it?
 			if (!m_readyQueue.empty()) {
-				notifyProcessStart(m_readyQueue.front(), currentTime, 1, output);
+				notifyProcessStart(m_readyQueue.front(), 1, output);
 				m_currentlyRunningProcessCore1 = m_readyQueue.front();
 				startProcess(m_currentlyRunningProcessCore1);
 				m_readyQueue.pop();
@@ -176,12 +175,12 @@ void FIFOScheduler::run() {
 
 		if (m_currentlyRunningProcessCore2 && m_currentlyRunningProcessCore2->isTerminated()) {
 			WaitForSingleObject(m_currentlyRunningProcessCore2->getHandle(), INFINITE);
-			notifyProcessTerminate(m_currentlyRunningProcessCore2, currentTime, 2, output);
+			notifyProcessTerminate(m_currentlyRunningProcessCore2, 2, output);
 			delete m_currentlyRunningProcessCore2;
 
 			// Can I replace it?
 			if (!m_readyQueue.empty()) {
-				notifyProcessStart(m_readyQueue.front(), currentTime, 2, output);
+				notifyProcessStart(m_readyQueue.front(), 2, output);
 				m_currentlyRunningProcessCore2 = m_readyQueue.front();
 				startProcess(m_currentlyRunningProcessCore2);
 				m_readyQueue.pop();
@@ -205,17 +204,17 @@ void FIFOScheduler::startProcess(MyProcess* process) {
 	process->setHandle(handle);
 }
 
-void FIFOScheduler::notifyProcessArrive(MyProcess* process, double time, std::ofstream& output) const {
-	std::cout << "Time " << time << ", " << process->getPid() << ", Arrived" << std::endl;
-	output << "Time " << time << ", " << process->getPid() << ", Arrived" << std::endl;
+void FIFOScheduler::notifyProcessArrive(MyProcess* process, std::ofstream& output) const {
+	std::cout << "Time " << m_runningTime << ", " << process->getPid() << ", Arrived" << std::endl;
+	output << "Time " << m_runningTime << ", " << process->getPid() << ", Arrived" << std::endl;
 }
 
-void FIFOScheduler::notifyProcessStart(MyProcess* process, double time, int core, std::ofstream& output) const {
-	std::cout << "Time " << time << ", " << process->getPid() << ", Started on Core " << core << std::endl;
-	output << "Time " << time << ", " << process->getPid() << ", Started on Core " << core << std::endl;
+void FIFOScheduler::notifyProcessStart(MyProcess* process, int core, std::ofstream& output) const {
+	std::cout << "Time " << m_runningTime << ", " << process->getPid() << ", Started on Core " << core << std::endl;
+	output << "Time " << m_runningTime << ", " << process->getPid() << ", Started on Core " << core << std::endl;
 }
 
-void FIFOScheduler::notifyProcessTerminate(MyProcess* process, double time, int core, std::ofstream& output) const {
-	std::cout << "Time " << time << ", " << process->getPid() << ", Terminated on Core " << core << std::endl;
-	output << "Time " << time << ", " << process->getPid() << ", Started on Core " << core << std::endl;
+void FIFOScheduler::notifyProcessTerminate(MyProcess* process, int core, std::ofstream& output) const {
+	std::cout << "Time " << m_runningTime << ", " << process->getPid() << ", Terminated on Core " << core << std::endl;
+	output << "Time " << m_runningTime << ", " << process->getPid() << ", Started on Core " << core << std::endl;
 }

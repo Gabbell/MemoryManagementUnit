@@ -5,6 +5,7 @@
 using namespace std;
 
 VMManager* mmu = nullptr;
+FIFOScheduler* scheduler = nullptr;
 HANDLE lock;
 
 struct Command {
@@ -101,7 +102,6 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 
 DWORD WINAPI overwatchRoutine(LPVOID p) {
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
-	FIFOScheduler* scheduler = (FIFOScheduler*)(p);
 	int agingWait = 100;
 
 	while (!scheduler->isTerminated()) {
@@ -166,32 +166,32 @@ int main() {
 	lock = CreateMutex(NULL, false, NULL);
 
 	try {
-		FIFOScheduler scheduler("processes.txt");
-
-		// Create Overwatch thread
-		DWORD(WINAPI *ow_routine)(LPVOID) = &overwatchRoutine;
-
-		HANDLE t_overwatch = CreateThread(
-			NULL,										//Default security attributes
-			0,											//Default executable stack size
-			(LPTHREAD_START_ROUTINE)ow_routine,			//Pointer to function
-			&scheduler,										//Don't need it
-			CREATE_SUSPENDED,							//Will start as soon as created
-			NULL);										//Do not need the thread ID
-
-		ResumeThread(t_overwatch);
-		scheduler.run();
-		WaitForSingleObject(t_overwatch, INFINITE);
-		CloseHandle(t_overwatch);
-
+		scheduler = new FIFOScheduler("processes.txt");
 	}
 	catch (runtime_error& e) {
 		cout << e.what() << endl;
 	}
+
+	// Create Overwatch thread
+	DWORD(WINAPI *ow_routine)(LPVOID) = &overwatchRoutine;
+
+	HANDLE t_overwatch = CreateThread(
+		NULL,										//Default security attributes
+		0,											//Default executable stack size
+		(LPTHREAD_START_ROUTINE)ow_routine,			//Pointer to function
+		NULL,										//Don't need it
+		CREATE_SUSPENDED,							//Will start as soon as created
+		NULL);										//Do not need the thread ID
+	ResumeThread(t_overwatch);
+
+	scheduler->run();
 	
+	WaitForSingleObject(t_overwatch, INFINITE);
+	CloseHandle(t_overwatch);
 	CloseHandle(lock);
 
 	// Destroy MMU
+	delete scheduler;
 	delete mmu;
 
 	system("pause"); // Used for testing

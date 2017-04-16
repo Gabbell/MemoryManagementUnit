@@ -15,18 +15,23 @@ private:
 	MyProcess* m_currentlyRunningProcessCore1;
 	MyProcess* m_currentlyRunningProcessCore2;
 
+
+	double m_runningTime;
+
 	void startProcess(MyProcess* process);
 
-	void notifyProcessArrive(MyProcess* process, double time, std::ofstream& output) const;
-	void notifyProcessStart(MyProcess* process, double time, int core, std::ofstream& output) const;
-	void notifyProcessTerminate(MyProcess* process, double time, int core, std::ofstream& output) const;
+	void notifyProcessArrive(MyProcess* process, std::ofstream& output) const;
+	void notifyProcessStart(MyProcess* process, int core, std::ofstream& output) const;
+	void notifyProcessTerminate(MyProcess* process, int core, std::ofstream& output) const;
 public:
 	FIFOScheduler(std::string file);
 	virtual ~FIFOScheduler();
+	bool isTerminated();
+	void run();
+
+	double getRunningTime() const { return m_runningTime; };
 
 	FIFOScheduler(const FIFOScheduler&) = delete;
 	FIFOScheduler& operator=(const FIFOScheduler&) = delete;
-	bool isTerminated();
-	void run();
 };
 
