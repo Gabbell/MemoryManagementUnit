@@ -61,7 +61,7 @@ int VMManager::store(std::string variableId, unsigned int value) {
 }
 
 int VMManager::diskStore(std::string variableId, unsigned int value) {
-	m_diskMemory[variableId] = &Page(variableId, value);
+	m_diskMemory[variableId] = new Page(variableId, value);
 	m_currentDiskSize++;
 	return 1;
 }
