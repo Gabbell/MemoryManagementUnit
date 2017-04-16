@@ -1,13 +1,14 @@
 #include "VMManager.h"
 
 #include <iostream>
+#include <sstream>
 
 VMManager::VMManager(int capacity) : m_capacity(capacity)
 {
 	//TODO Clean up default values to nullptr
 
 	diskInStream.open("vm.txt");
-	diskOutStream.open("vm.txt");
+	diskOutStream.open("vm.txt", std::ofstream::app|std::ofstream::out);
 }
 
 void VMManager::sweepAges() {
@@ -61,7 +62,7 @@ int VMManager::store(std::string variableId, unsigned int value) {
 }
 
 int VMManager::diskStore(std::string variableId, unsigned int value) {
-	m_diskMemory[variableId] = new Page(variableId, value);
+	diskOutStream << variableId << " " << value << std::endl;
 	m_currentDiskSize++;
 	return 1;
 }
@@ -77,13 +78,24 @@ int VMManager::release(std::string variableId) {
 }
 
 int VMManager::diskRelease(std::string variableId) {
-	if (m_diskMemory.erase(variableId) > 0) {
-		//Found the entry
-		m_currentDiskSize--;
-		return 1;
+	std::string currentId;
+	std::string currentValue;
+	std::stringstream strim;
+
+	while (!diskInStream.eof()) {
+		diskInStream >> currentId;
+		diskInStream >> currentValue;
+
+		if (currentId != variableId) {
+			strim << currentId << " " << currentValue << std::endl;
+		}
+		else {
+			//Found the variableId
+			m_currentDiskSize--;
+		}
 	}
-	std::cout << "VMManager: diskRelease: Could not find variable " << variableId << " to delete" << std::endl;
-	return -1;
+	diskOutStream << strim.str();
+	return 1;
 }
 
 int VMManager::lookup(std::string variableId) {
@@ -96,17 +108,21 @@ int VMManager::lookup(std::string variableId) {
 		return it->second->m_value;
 	}
 
-	it = m_diskMemory.find(variableId);
+	std::string currentId;
+	int currentValue;
+	std::stringstream strim;
 
-	if (it != m_diskMemory.end()) {
-		//Found the entry in disk memory
-		int foreValue = it->second->m_value;
-		store(variableId, it->second->m_value);
-		diskRelease(variableId);
-		return foreValue;
+	while (!diskInStream.eof()) {
+		diskInStream >> currentId;
+		diskInStream >> currentValue;
+
+		if (currentId == variableId) {
+			//Found the variableId
+			store(variableId, currentValue);
+			diskRelease(variableId);
+			return currentValue;
+		}
 	}
-
-	std::cout << "VMManager: lookup: Could not find variable " << variableId << " in main memory or disk" << std::endl;
 	return -1;
 }
 

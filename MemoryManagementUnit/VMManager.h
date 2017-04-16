@@ -12,7 +12,6 @@ private:
 	int m_currentSize = 0;
 	int m_currentDiskSize = 0;
 	std::map<std::string, Page*> m_mainMemory;			//Map of pages in main memory
-	std::map<std::string, Page*> m_diskMemory;			//Map of memory in disk
 	std::ifstream diskInStream;
 	std::ofstream diskOutStream;
 public:
@@ -25,6 +24,5 @@ public:
 	int diskRelease(std::string variableId);
 	int lookup(std::string variableId);
 	void sweepAges();
-	void run();
 };
 
