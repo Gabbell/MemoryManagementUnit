@@ -74,15 +74,15 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 			switch (cmd.type) {
 			case Command::STORE:
 				cout << "STORING " << cmd.variableId << " " << cmd.value << endl;
-				mmu->store(cmd.variableId, cmd.value);
+				synchronizedStore(cmd.variableId, cmd.value);
 				break;
 			case Command::RELEASE:
 				cout << "RELEASING " << cmd.variableId << endl;
-				mmu->release(cmd.variableId);
+				synchronizedRelease(cmd.variableId);
 				break;
 			case Command::LOOKUP:
 				cout << "LOOKUP " << cmd.variableId << endl;
-				mmu->lookup(cmd.variableId);
+				synchronizedLookup(cmd.variableId);
 				break;
 			default:
 				break;
