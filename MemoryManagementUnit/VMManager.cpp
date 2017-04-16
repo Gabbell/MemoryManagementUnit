@@ -27,7 +27,11 @@ void VMManager::sweepAges() {
 }
 
 int VMManager::store(std::string variableId, unsigned int value, MyProcess* process) {
-	if (m_currentSize < m_capacity) {
+	if (m_mainMemory.find(variableId) != m_mainMemory.end()) {
+		m_mainMemory.find(variableId)->second->m_value = value;
+		return 1;
+	}
+	else if (m_currentSize < m_capacity) {
 		//A frame was found, put the page there
 		m_mainMemory[variableId] = new Page(variableId, value);
 		m_currentSize++;
