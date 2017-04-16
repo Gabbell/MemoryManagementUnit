@@ -16,11 +16,11 @@ public:
 	VMManager(int capacity);
 	~VMManager();
 
-	int store(std::string variableId, unsigned int value);
+	int store(std::string variableId, unsigned int value, MyProcess* process);
 	int diskStore(std::string variableId, unsigned int value);
 	int release(std::string variableId);
 	int diskRelease(std::string variableId);
-	int lookup(std::string variableId);
+	int lookup(std::string variableId, MyProcess* process);
 	void sweepAges();
 };
 

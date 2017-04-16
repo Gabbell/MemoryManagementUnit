@@ -20,9 +20,9 @@ private:
 
 	void startProcess(MyProcess* process);
 
-	void notifyProcessArrive(MyProcess* process, std::ofstream& output) const;
-	void notifyProcessStart(MyProcess* process, int core, std::ofstream& output) const;
-	void notifyProcessTerminate(MyProcess* process, int core, std::ofstream& output) const;
+	void notifyProcessArrive(MyProcess* process) const;
+	void notifyProcessStart(MyProcess* process, int core) const;
+	void notifyProcessTerminate(MyProcess* process, int core) const;
 public:
 	FIFOScheduler(std::string file);
 	virtual ~FIFOScheduler();

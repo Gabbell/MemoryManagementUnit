@@ -1,6 +1,7 @@
 #include "FIFOScheduler.h"
 #include "MyProcess.h"
 #include "VMManager.h"
+#include <sstream>
 
 using namespace std;
 
@@ -22,10 +23,19 @@ struct Command {
 
 vector<Command> commands;
 
-void synchronizedStore(std::string variableId, unsigned int value) {
+ofstream outputLog;
+HANDLE logLock;
+
+void writeToOutputLog(std::string msg) {
+	WaitForSingleObject(logLock, INFINITE);
+	outputLog << msg;
+	ReleaseMutex(logLock);
+}
+
+void synchronizedStore(std::string variableId, unsigned int value, MyProcess* process) {
 	WaitForSingleObject(lock, INFINITE);
 	
-	mmu->store(variableId, value);
+	mmu->store(variableId, value, process);
 	
 	ReleaseMutex(lock);
 }
@@ -38,10 +48,10 @@ void synchronizedRelease(std::string variableId) {
 	ReleaseMutex(lock);
 }
 
-int synchronizedLookup(std::string variableId) {
+int synchronizedLookup(std::string variableId, MyProcess* process) {
 	WaitForSingleObject(lock, INFINITE);
 	
-	int value = mmu->lookup(variableId);
+	int value = mmu->lookup(variableId, process);
 
 	ReleaseMutex(lock);
 
@@ -73,18 +83,36 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 			Command cmd = commands[commandIndex];
 
 			switch (cmd.type) {
-			case Command::STORE:
-				cout << "STORING " << cmd.variableId << " " << cmd.value << endl;
-				synchronizedStore(cmd.variableId, cmd.value);
+			case Command::STORE: {
+				cout << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Store: Variable " << cmd.variableId << ", Value " << cmd.value << std::endl;
+
+				stringstream ss;
+				ss << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Store: Variable " << cmd.variableId << ", Value " << cmd.value << std::endl;
+				writeToOutputLog(ss.str());
+
+				synchronizedStore(cmd.variableId, cmd.value, process);
 				break;
-			case Command::RELEASE:
-				cout << "RELEASING " << cmd.variableId << endl;
+			}
+			case Command::RELEASE: {
+				cout << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Release: Variable " << cmd.variableId << std::endl;
+
+				stringstream ss;
+				ss << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Release: Variable " << cmd.variableId << std::endl;
+				writeToOutputLog(ss.str());
+
 				synchronizedRelease(cmd.variableId);
 				break;
-			case Command::LOOKUP:
-				cout << "LOOKUP " << cmd.variableId << endl;
-				synchronizedLookup(cmd.variableId);
+			}
+			case Command::LOOKUP: {
+				int value = synchronizedLookup(cmd.variableId, process);
+				cout << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Lookup: Variable " << cmd.variableId << ", Value " << value << std::endl;
+
+				stringstream ss;
+				ss << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", Lookup: Variable " << cmd.variableId << ", Value " << value << std::endl;
+				writeToOutputLog(ss.str());
+
 				break;
+			}
 			default:
 				break;
 			}
@@ -120,6 +148,10 @@ DWORD WINAPI overwatchRoutine(LPVOID p) {
 }
 
 int main() {
+
+	outputLog.open("output.txt");
+	logLock = CreateMutex(NULL, false, NULL);
+
 	// Load commands
 	ifstream commandFile("commands.txt");
 
@@ -196,6 +228,9 @@ int main() {
 	// Destroy MMU
 	delete scheduler;
 	delete mmu;
+
+	outputLog.close();
+	CloseHandle(logLock);
 
 	system("pause"); // Used for testing
 

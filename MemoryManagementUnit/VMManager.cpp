@@ -2,6 +2,9 @@
 
 #include <iostream>
 #include <sstream>
+#include "MyProcess.h"
+
+void writeToOutputLog(std::string msg);
 
 VMManager::VMManager(int capacity) : m_capacity(capacity)
 {
@@ -23,7 +26,7 @@ void VMManager::sweepAges() {
 	}
 }
 
-int VMManager::store(std::string variableId, unsigned int value) {
+int VMManager::store(std::string variableId, unsigned int value, MyProcess* process) {
 	if (m_currentSize < m_capacity) {
 		//A frame was found, put the page there
 		m_mainMemory[variableId] = new Page(variableId, value);
@@ -47,7 +50,14 @@ int VMManager::store(std::string variableId, unsigned int value) {
 		}
 		it = m_mainMemory.find(smallestAgeId);
 
-		std::cout << "SWAP: Variable " << it->second->m_variableId << " with Variable " << variableId << std::endl;
+		extern FIFOScheduler* scheduler;
+
+		std::cout << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", "<< "Memory Manager, SWAP: Variable " << it->second->m_variableId << " with Variable " << variableId << std::endl;
+
+		std::stringstream ss;
+		ss << "Time " << scheduler->getRunningTime() << ", " << process->getPid() << ", " << "Memory Manager, SWAP: Variable " << it->second->m_variableId << " with Variable " << variableId << std::endl;
+
+		writeToOutputLog(ss.str());
 
 		//Storing the page in disk that is currently in main memory and that will be switched out
 		diskRelease(it->second->m_variableId);
@@ -55,13 +65,11 @@ int VMManager::store(std::string variableId, unsigned int value) {
 		//Releasing the page from main memory
 		release(it->second->m_variableId);
 		//Storing the new page into main memory
-		store(variableId, value);
+		store(variableId, value, process);
 
 		m_mainMemory[variableId]->isUsed();
 		return 1;
 	}
-	std::cout << "VMManager: store: An error occured" << std::endl;
-	return -1; //For now if a frame is not found, do nothing and ignore the command
 }
 
 int VMManager::diskStore(std::string variableId, unsigned int value) {
@@ -81,7 +89,6 @@ int VMManager::release(std::string variableId) {
 		m_currentSize--;
 		return 1;
 	}
-	std::cout << "VMManager: release: Could not find variable " << variableId << " to delete" << std::endl;
 	return -1;
 }
 
@@ -119,7 +126,7 @@ int VMManager::diskRelease(std::string variableId) {
 	return 1;
 }
 
-int VMManager::lookup(std::string variableId) {
+int VMManager::lookup(std::string variableId, MyProcess* process) {
 	std::map<std::string, Page*>::iterator it;
 	it = m_mainMemory.find(variableId);
 
@@ -142,7 +149,7 @@ int VMManager::lookup(std::string variableId) {
 		if (currentId == variableId) {
 			//Found the variableId
 			input.close();
-			store(variableId, currentValue);
+			store(variableId, currentValue, process);
 			diskRelease(variableId);
 			return currentValue;
 		}
