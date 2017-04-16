@@ -20,8 +20,6 @@ struct Command {
 };
 
 vector<Command> commands;
-int commandIndex = 0;
-int commandWait = rand() % 201;
 
 void synchronizedStore(std::string variableId, unsigned int value) {
 	WaitForSingleObject(lock, INFINITE);
@@ -65,9 +63,12 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 
 	std::chrono::high_resolution_clock::time_point commandTimer = std::chrono::high_resolution_clock::now();
 
+	int commandIndex = 0;
+	int commandWait = rand() % 201;
+
 	//Busy waiting
 	while (getCurrentTime(t_start, std::chrono::high_resolution_clock::now()) < process->getBurstTime()) {
-		if (getCurrentTime(commandTimer, std::chrono::high_resolution_clock::now()) >= commandWait) {
+		if ((getCurrentTime(commandTimer, std::chrono::high_resolution_clock::now()) >= commandWait) && commandIndex < commands.size()) {
 			Command cmd = commands[commandIndex];
 
 			switch (cmd.type) {
@@ -88,7 +89,7 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 			}
 			commandTimer = std::chrono::high_resolution_clock::now();
 			commandIndex++;
-			commandWait += rand() % 201;
+			commandWait = rand() % 201;
 		}
 	}
 
@@ -180,6 +181,7 @@ int main() {
 
 		ResumeThread(t_overwatch);
 		scheduler.run();
+		WaitForSingleObject(t_overwatch, INFINITE);
 		CloseHandle(t_overwatch);
 
 	}
