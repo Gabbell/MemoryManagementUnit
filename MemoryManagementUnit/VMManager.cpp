@@ -96,7 +96,10 @@ int VMManager::lookup(std::string variableId) {
 
 VMManager::~VMManager()
 {
-	std::map<std::string, Page*>::iterator it;
+	diskInStream.close();
+	diskOutStream.close();
+
+	auto it = m_mainMemory.begin();
 	while (it != m_mainMemory.end()) {
 		delete it->second;
 		it++;

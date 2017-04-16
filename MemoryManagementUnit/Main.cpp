@@ -1,15 +1,58 @@
 #include <iostream>
 #include <chrono>
 #include <string>
+#include <fstream>
 #include <Windows.h>
+#include <vector>
 
 #include "FIFOScheduler.h"
 #include "MyProcess.h"
-
-#include <iostream>
+#include "VMManager.h"
 
 using namespace std;
 
+VMManager* mmu = nullptr;
+HANDLE lock;
+
+struct Command {
+	enum Type {
+		STORE,
+		LOOKUP,
+		RELEASE
+	};
+
+	Type type;
+	std::string variableId;
+	unsigned int value;
+};
+
+vector<Command> commands;
+
+void synchronizedStore(std::string variableId, unsigned int value) {
+	WaitForSingleObject(lock, INFINITE);
+	
+	mmu->store(variableId, value);
+	
+	ReleaseMutex(lock);
+}
+
+void synchronizedRelease(std::string variableId) {
+	WaitForSingleObject(lock, INFINITE);
+
+	mmu->release(variableId);
+
+	ReleaseMutex(lock);
+}
+
+int synchronizedLookup(std::string variableId) {
+	WaitForSingleObject(lock, INFINITE);
+	
+	int value = mmu->lookup(variableId);
+
+	ReleaseMutex(lock);
+
+	return value;
+}
 double getCurrentTime(std::chrono::high_resolution_clock::time_point startTime, std::chrono::high_resolution_clock::time_point endTime) {
 
 	using namespace std::chrono;
@@ -25,8 +68,29 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	MyProcess* process = (MyProcess*)(p);
 
+	std::chrono::high_resolution_clock::time_point commandTimer = std::chrono::high_resolution_clock::now();
+
 	//Busy waiting
-	while (getCurrentTime(t_start, std::chrono::high_resolution_clock::now()) < process->getBurstTime());
+	while (getCurrentTime(t_start, std::chrono::high_resolution_clock::now()) < process->getBurstTime()) {
+		if (getCurrentTime(commandTimer, std::chrono::high_resolution_clock::now()) >= 200) {
+			Command cmd = commands[rand() % commands.size()];
+
+			switch (cmd.type) {
+			case Command::STORE:
+				cout << "STORING" << endl;
+				break;
+			case Command::RELEASE:
+				cout << "RELEASING" << endl;
+				break;
+			case Command::LOOKUP:
+				cout << "LOOKUP" << endl;
+				break;
+			default:
+				break;
+			}
+			commandTimer = std::chrono::high_resolution_clock::now();
+		}
+	}
 
 	// Terminate process
 	process->terminate();
@@ -50,8 +114,55 @@ DWORD WINAPI overwatchRoutine(LPVOID p) {
 }
 
 int main() {
+	// Load commands
+	ifstream commandFile("commands.txt");
 
-	//Create Overwatch thread
+	if (!commandFile) {
+		cout << "Error: invalid or missing commands.txt file." << endl;
+		return 1;
+	}
+
+	while (!commandFile.eof()) {
+		std::string type;
+		std::string variableId;
+		
+		commandFile >> type;
+		commandFile >> variableId;
+
+		if (type == "Store") {
+			unsigned int value = 0;
+			commandFile >> value;
+			commands.push_back({Command::STORE, variableId, value});
+		}
+		else if (type == "Release") {
+			commands.push_back({ Command::RELEASE, variableId, 0 });
+		}
+		else if (type == "Lookup") {
+			commands.push_back({ Command::LOOKUP, variableId, 0 });
+		}
+	}
+
+	commandFile.close();
+
+	// Create MMU
+	ifstream configFile("memconfig.txt");
+
+	if (!configFile) {
+		cout << "Error: invalid or missing memconfig.txt file." << endl;
+		return 1;
+	}
+
+	int capacity = 0;
+	configFile >> capacity;
+
+	configFile.close();
+
+	mmu = new VMManager(capacity);
+
+	// Create mutex
+	lock = CreateMutex(NULL, false, NULL);
+
+	// Create Overwatch thread
 	DWORD(WINAPI *ow_routine)(LPVOID) = &overwatchRoutine;
 
 	HANDLE t_overwatch = CreateThread(
@@ -63,6 +174,12 @@ int main() {
 		NULL);										//Do not need the thread ID
 
 	WaitForSingleObject(t_overwatch, INFINITE);
+	CloseHandle(t_overwatch);
+
+	// Destroy MMU
+	delete mmu;
+
+	CloseHandle(lock);
 
 	system("pause"); // Used for testing
 

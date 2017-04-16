@@ -44,5 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="processes.txt" />
+    <Text Include="memconfig.txt" />
+    <Text Include="commands.txt" />
   </ItemGroup>
 </Project>

@@ -8,4 +8,6 @@ MyProcess::MyProcess(std::string pid, double arrival_time, double burst_time, in
 	m_terminated(false)
 {}
 
-MyProcess::~MyProcess() {}
+MyProcess::~MyProcess() {
+	CloseHandle(m_handle);
+}

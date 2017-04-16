@@ -36,7 +36,7 @@ FIFOScheduler::FIFOScheduler(std::string processFile) : m_currentlyRunningProces
 	std::ifstream input(processFile);
 
 	if (!input) {
-		throw std::runtime_error("Error: invalid process.txt file.");
+		throw std::runtime_error("Error: invalid or missing process.txt file.");
 	}
 
 	// Read number of processes

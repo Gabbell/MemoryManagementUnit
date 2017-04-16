@@ -122,6 +122,8 @@
     <ClInclude Include="VMManager.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="commands.txt" />
+    <Text Include="memconfig.txt" />
     <Text Include="processes.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
