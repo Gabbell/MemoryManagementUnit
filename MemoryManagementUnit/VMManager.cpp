@@ -14,7 +14,7 @@ VMManager::VMManager(int capacity) : m_capacity(capacity)
 int VMManager::store(std::string variableId, unsigned int value) {
 	if (m_currentSize < m_capacity) {
 		//A frame was found, put the page there
-		m_mainMemory[variableId] = &Page(variableId, value);
+		m_mainMemory[variableId] = new Page(variableId, value);
 		m_currentSize++;
 		return 1;
 	}
