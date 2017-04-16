@@ -8,12 +8,16 @@ VMManager::VMManager(int capacity) : m_capacity(capacity)
 
 	diskInStream.open("vm.txt");
 	diskOutStream.open("vm.txt");
-	scheduler = new FIFOScheduler("processes.txt");
-
 }
 
-void VMManager::run() {
-	scheduler->run();
+void VMManager::sweepAges() {
+	std::map<std::string, Page*>::iterator it;
+	it = m_mainMemory.begin();
+
+	while (it != m_mainMemory.end()) {
+		it->second->updateAge();
+		it++;
+	}
 }
 
 int VMManager::store(std::string variableId, unsigned int value) {
@@ -116,6 +120,4 @@ VMManager::~VMManager()
 		delete it->second;
 		it++;
 	}
-
-	delete scheduler;
 }

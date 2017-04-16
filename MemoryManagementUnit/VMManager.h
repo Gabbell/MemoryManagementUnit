@@ -15,7 +15,6 @@ private:
 	std::map<std::string, Page*> m_diskMemory;			//Map of memory in disk
 	std::ifstream diskInStream;
 	std::ofstream diskOutStream;
-	FIFOScheduler* scheduler;
 public:
 	VMManager(int capacity);
 	~VMManager();
@@ -25,6 +24,7 @@ public:
 	int release(std::string variableId);
 	int diskRelease(std::string variableId);
 	int lookup(std::string variableId);
+	void sweepAges();
 	void run();
 };
 

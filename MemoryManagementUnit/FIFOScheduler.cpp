@@ -95,6 +95,10 @@ FIFOScheduler::~FIFOScheduler() {
 
 double getCurrentTime(std::chrono::high_resolution_clock::time_point startTime, std::chrono::high_resolution_clock::time_point endTime);
 
+bool FIFOScheduler::isTerminated() {
+	return m_isTerminated;
+}
+
 void FIFOScheduler::run() {
 
 	std::ofstream output = std::ofstream("output.txt");
@@ -189,6 +193,7 @@ void FIFOScheduler::run() {
 	}
 
 	output.close();
+	m_isTerminated = true;
 	std::cout << "----------FINISHED----------" << std::endl;
 }
 

@@ -8,6 +8,7 @@ class string;
 class FIFOScheduler
 {
 private:
+	bool m_isTerminated = false;
 	std::queue<MyProcess*> m_arrivalQueue;
 	std::queue<MyProcess*> m_readyQueue;
 
@@ -25,7 +26,7 @@ public:
 
 	FIFOScheduler(const FIFOScheduler&) = delete;
 	FIFOScheduler& operator=(const FIFOScheduler&) = delete;
-
+	bool isTerminated();
 	void run();
 };
 

@@ -99,29 +99,17 @@ DWORD WINAPI dummyRoutine(LPVOID p) {
 }
 
 DWORD WINAPI overwatchRoutine(LPVOID p) {
-	//Scheduler scheduler;
-	
-	//scheduler.run(&dummyRoutine);
+	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
+	FIFOScheduler* scheduler = (FIFOScheduler*)(p);
+	int agingWait = 100;
 
-	// Create MMU
-	ifstream configFile("memconfig.txt");
-
-	if (!configFile) {
-		cout << "Error: invalid or missing memconfig.txt file." << endl;
-		return 1;
-	}
-
-	int capacity = 0;
-	configFile >> capacity;
-
-	configFile.close();
-
-	try {
-		mmu = new VMManager(capacity);
-		mmu->run();
-	}
-	catch (runtime_error& e) {
-		cout << e.what() << endl;
+	while (!scheduler->isTerminated()) {
+		double now = getCurrentTime(t_start, std::chrono::high_resolution_clock::now());
+		if (now >= agingWait) {
+			//Aging tick
+			mmu->sweepAges();
+			agingWait += 100;
+		}
 	}
 
 	return 0;
@@ -158,27 +146,51 @@ int main() {
 
 	commandFile.close();
 
+	// Create MMU
+	ifstream configFile("memconfig.txt");
+
+	if (!configFile) {
+		cout << "Error: invalid or missing memconfig.txt file." << endl;
+		return 1;
+	}
+
+	int capacity = 0;
+	configFile >> capacity;
+
+	configFile.close();
+
+	mmu = new VMManager(capacity);
+
 	// Create mutex
 	lock = CreateMutex(NULL, false, NULL);
 
-	// Create Overwatch thread
-	DWORD(WINAPI *ow_routine)(LPVOID) = &overwatchRoutine;
+	try {
+		FIFOScheduler scheduler("processes.txt");
 
-	HANDLE t_overwatch = CreateThread(
-		NULL,										//Default security attributes
-		0,											//Default executable stack size
-		(LPTHREAD_START_ROUTINE)ow_routine,			//Pointer to function
-		NULL,										//Don't need it
-		0,											//Will start as soon as created
-		NULL);										//Do not need the thread ID
+		// Create Overwatch thread
+		DWORD(WINAPI *ow_routine)(LPVOID) = &overwatchRoutine;
 
-	WaitForSingleObject(t_overwatch, INFINITE);
-	CloseHandle(t_overwatch);
+		HANDLE t_overwatch = CreateThread(
+			NULL,										//Default security attributes
+			0,											//Default executable stack size
+			(LPTHREAD_START_ROUTINE)ow_routine,			//Pointer to function
+			&scheduler,										//Don't need it
+			CREATE_SUSPENDED,							//Will start as soon as created
+			NULL);										//Do not need the thread ID
+
+		ResumeThread(t_overwatch);
+		scheduler.run();
+		CloseHandle(t_overwatch);
+
+	}
+	catch (runtime_error& e) {
+		cout << e.what() << endl;
+	}
+	
+	CloseHandle(lock);
 
 	// Destroy MMU
 	delete mmu;
-
-	CloseHandle(lock);
 
 	system("pause"); // Used for testing
 
