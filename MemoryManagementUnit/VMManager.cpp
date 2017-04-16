@@ -7,8 +7,10 @@ VMManager::VMManager(int capacity) : m_capacity(capacity)
 {
 	//TODO Clean up default values to nullptr
 
-	diskInStream.open("vm.txt");
-	diskOutStream.open("vm.txt", std::ofstream::app|std::ofstream::out);
+	// Clear vm.txt
+	std::ofstream out;
+	out.open("vm.txt", std::ofstream::trunc | std::ofstream::out);
+	out.close();
 }
 
 void VMManager::sweepAges() {
@@ -48,6 +50,7 @@ int VMManager::store(std::string variableId, unsigned int value) {
 		std::cout << "SWAP: Variable " << it->second->m_variableId << " with Variable " << variableId << std::endl;
 
 		//Storing the page in disk that is currently in main memory and that will be switched out
+		diskRelease(it->second->m_variableId);
 		diskStore(it->second->m_variableId, it->second->m_value);
 		//Releasing the page from main memory
 		release(it->second->m_variableId);
@@ -62,7 +65,12 @@ int VMManager::store(std::string variableId, unsigned int value) {
 }
 
 int VMManager::diskStore(std::string variableId, unsigned int value) {
-	diskOutStream << variableId << " " << value << std::endl;
+	std::ofstream out;
+	out.open("vm.txt", std::ofstream::app | std::ofstream::out);
+
+	out << variableId << " " << value << std::endl;
+
+	out.close();
 	m_currentDiskSize++;
 	return 1;
 }
@@ -82,9 +90,12 @@ int VMManager::diskRelease(std::string variableId) {
 	std::string currentValue;
 	std::stringstream strim;
 
-	while (!diskInStream.eof()) {
-		diskInStream >> currentId;
-		diskInStream >> currentValue;
+	std::ifstream input("vm.txt");
+
+
+	while (!input.eof()) {
+		input >> currentId;
+		input >> currentValue;
 
 		if (currentId != variableId) {
 			strim << currentId << " " << currentValue << std::endl;
@@ -94,7 +105,13 @@ int VMManager::diskRelease(std::string variableId) {
 			m_currentDiskSize--;
 		}
 	}
-	diskOutStream << strim.str();
+
+	input.close();
+
+	std::ofstream out;
+	out.open("vm.txt", std::ofstream::trunc | std::ofstream::out);
+	out << strim.str();
+	out.close();
 	return 1;
 }
 
@@ -112,25 +129,28 @@ int VMManager::lookup(std::string variableId) {
 	int currentValue;
 	std::stringstream strim;
 
-	while (!diskInStream.eof()) {
-		diskInStream >> currentId;
-		diskInStream >> currentValue;
+	std::ifstream input("vm.txt");
+
+	while (!input.eof()) {
+		input >> currentId;
+		input >> currentValue;
 
 		if (currentId == variableId) {
 			//Found the variableId
+			input.close();
 			store(variableId, currentValue);
 			diskRelease(variableId);
 			return currentValue;
 		}
 	}
+
+	input.close();
+
 	return -1;
 }
 
 VMManager::~VMManager()
 {
-	diskInStream.close();
-	diskOutStream.close();
-
 	auto it = m_mainMemory.begin();
 	while (it != m_mainMemory.end()) {
 		delete it->second;

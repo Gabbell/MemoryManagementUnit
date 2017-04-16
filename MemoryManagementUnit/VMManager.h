@@ -12,8 +12,6 @@ private:
 	int m_currentSize = 0;
 	int m_currentDiskSize = 0;
 	std::map<std::string, Page*> m_mainMemory;			//Map of pages in main memory
-	std::ifstream diskInStream;
-	std::ofstream diskOutStream;
 public:
 	VMManager(int capacity);
 	~VMManager();
